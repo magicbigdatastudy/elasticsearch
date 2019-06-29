@@ -1,8 +1,10 @@
 package net.noyark.elasticsearch;
 
+import com.alibaba.fastjson.JSON;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.IndicesAdminClient;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
@@ -11,13 +13,14 @@ import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.junit.Test;
 
 import java.net.InetAddress;
+import java.util.Map;
 
 public class EsTest {
 
     public TransportClient getClient() throws Exception{
         return new PreBuiltTransportClient(Settings.EMPTY)
                 .addTransportAddress(
-                        new TransportAddress(InetAddress.getByName("mapi.noyark.net"),9300)
+                        new TransportAddress(InetAddress.getByName("mapi.noyark.net"),9200)
                 );
         //如果是多个节点，则在add后面执行后，继续调用一个add
     }
@@ -73,6 +76,36 @@ public class EsTest {
         TransportClient client = getClient();
         IndicesAdminClient indexClient = client.admin().indices();
         indexClient.prepareDelete("index03").get();
+    }
+
+    /**
+     * 新建文档
+     * 文档是对象，底层http协议如何将对象转化为json字符串
+     * 引入一个第三方根据jacksonJson：将对象转化为json字符串，
+     * 将json字符串转化为对象
+     */
+    /*
+    测试jackson包转化为对象成为json字符串
+     */
+    @Test
+    public void test05() throws Exception {
+        Item item = new Item();
+        item.setId(101);
+        item.setBarcode("sdfas");
+        item.setTitle("三星大地雷");
+        //这里用fastjson代替了jackson
+        item.setSellPoint("灭口好武器");
+        String objStr = JSON.toJSON(item).toString();
+        //老版本直接传json，新版本使用Map(json->Map传入)
+        Map<String,String> map = JSON.parseObject(objStr,Map.class);
+        System.out.println(objStr);
+        IndexResponse response = getClient()
+                .prepareIndex("index01","article")
+                .setSource(map)
+                .execute()
+                .actionGet();
+        System.out.println(response.status());
+
     }
 
 
